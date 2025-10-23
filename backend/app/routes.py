@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Any
 import math
+import logging
 
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
@@ -11,6 +12,7 @@ from .models import User, Profile, Skill, JobPosting, Application, Role, Applica
 from .ml.service import RecommendationService
 
 api_bp = Blueprint("api", __name__)
+logger = logging.getLogger(__name__)
 
 
 def require_roles(*roles: Role):
@@ -153,7 +155,8 @@ def apply_to_job():
     app = Application(job_id=job.id, student_id=current_user.id)
     db.session.add(app)
     db.session.commit()
-    # In iteration 1, notifications are logged
+    # Log a notification event for auditing (iteration 1)
+    logger.info("Application submitted: student_id=%s job_id=%s application_id=%s", current_user.id, job.id, app.id)
     return jsonify({"applicationID": app.id, "status": app.status.value})
 
 
@@ -185,6 +188,28 @@ def create_job():
     return jsonify({"id": job.id})
 
 
+@api_bp.get("/employer/jobs")
+@require_roles(Role.EMPLOYER)
+def list_employer_jobs():
+    jobs = (
+        JobPosting.query.filter_by(employer_id=current_user.id)
+        .order_by(JobPosting.date_posted.desc())
+        .all()
+    )
+    return jsonify(
+        [
+            {
+                "id": j.id,
+                "title": j.title,
+                "location": j.location,
+                "datePosted": j.date_posted.isoformat(),
+                "skills": [s.name for s in j.required_skills],
+            }
+            for j in jobs
+        ]
+    )
+
+
 @api_bp.get("/employer/jobs/<int:job_id>")
 @require_roles(Role.EMPLOYER)
 def get_job(job_id: int):
@@ -213,6 +238,28 @@ def get_applicants(job_id: int):
             "studentName": stu.name,
             "status": a.status.value,
         })
+    return jsonify(rows)
+
+
+@api_bp.get("/student/applications")
+@require_roles(Role.STUDENT)
+def list_student_applications():
+    apps = (
+        Application.query.filter_by(student_id=current_user.id)
+        .order_by(Application.application_date.desc())
+        .all()
+    )
+    rows: list[dict[str, Any]] = []
+    for a in apps:
+        rows.append(
+            {
+                "applicationID": a.id,
+                "jobID": a.job_id,
+                "jobTitle": a.job.title if a.job else None,
+                "status": a.status.value,
+                "appliedAt": a.application_date.isoformat(),
+            }
+        )
     return jsonify(rows)
 
 
