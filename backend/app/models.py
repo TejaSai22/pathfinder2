@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Optional
 
 from flask_login import UserMixin
-from sqlalchemy import Integer, String, DateTime, Enum as SAEnum, Text, ForeignKey, Table
+from sqlalchemy import Integer, String, DateTime, Enum as SAEnum, Text, ForeignKey, Table, Column
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from . import db, login_manager
@@ -20,15 +20,15 @@ class Role(str, Enum):
 profile_skills = Table(
     "profile_skills",
     db.metadata,
-    mapped_column("profile_id", ForeignKey("profiles.id"), primary_key=True),
-    mapped_column("skill_id", ForeignKey("skills.id"), primary_key=True),
+    Column("profile_id", ForeignKey("profiles.id"), primary_key=True),
+    Column("skill_id", ForeignKey("skills.id"), primary_key=True),
 )
 
 job_skills = Table(
     "job_skills",
     db.metadata,
-    mapped_column("job_id", ForeignKey("job_postings.id"), primary_key=True),
-    mapped_column("skill_id", ForeignKey("skills.id"), primary_key=True),
+    Column("job_id", ForeignKey("job_postings.id"), primary_key=True),
+    Column("skill_id", ForeignKey("skills.id"), primary_key=True),
 )
 
 
