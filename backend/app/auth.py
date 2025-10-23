@@ -35,7 +35,8 @@ def register():
         return jsonify({"error": "Missing required fields"}), 400
 
     try:
-        validate_email(email)
+        # In dev we do not require deliverability (MX) check
+        validate_email(email, check_deliverability=False)
     except EmailNotValidError as e:
         return jsonify({"error": str(e)}), 400
 
