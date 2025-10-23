@@ -1,8 +1,10 @@
 from __future__ import annotations
 from typing import Any
+import math
 
 from flask import Blueprint, request, jsonify
 from flask_login import login_required, current_user
+from sqlalchemy import or_
 
 from . import db
 from .models import User, Profile, Skill, JobPosting, Application, Role, ApplicationStatus
@@ -20,6 +22,66 @@ def require_roles(*roles: Role):
         inner.__name__ = fn.__name__
         return login_required(inner)
     return wrapper
+
+@api_bp.get("/jobs")
+def list_jobs():
+    args = request.args
+    q = (args.get("q", "") or "").strip()
+    location = (args.get("location", "") or "").strip()
+    # support repeated ?skill= as well as comma-separated skills
+    skill_params = [s.strip() for s in args.getlist("skill") if s and s.strip()]
+    skills_csv = args.get("skills", "") or ""
+    if skills_csv:
+        skill_params.extend([s.strip() for s in skills_csv.split(",") if s.strip()])
+
+    try:
+        page = max(int(args.get("page", 1) or 1), 1)
+    except Exception:
+        page = 1
+    try:
+        page_size = int(args.get("pageSize", 10) or 10)
+    except Exception:
+        page_size = 10
+    page_size = min(max(page_size, 1), 50)
+
+    query = JobPosting.query
+    if q:
+        like = f"%{q}%"
+        query = query.filter(or_(JobPosting.title.ilike(like), JobPosting.description.ilike(like)))
+    if location:
+        query = query.filter(JobPosting.location.ilike(f"%{location}%"))
+    if skill_params:
+        query = query.join(JobPosting.required_skills).filter(Skill.name.in_(skill_params)).distinct()
+
+    total = query.count()
+    items = (
+        query.order_by(JobPosting.date_posted.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    rows: list[dict[str, Any]] = []
+    for j in items:
+        rows.append(
+            {
+                "id": j.id,
+                "title": j.title,
+                "location": j.location,
+                "datePosted": j.date_posted.isoformat(),
+                "skills": [s.name for s in j.required_skills],
+            }
+        )
+
+    return jsonify(
+        {
+            "items": rows,
+            "page": page,
+            "pageSize": page_size,
+            "total": int(total),
+            "totalPages": math.ceil(total / page_size) if page_size else 0,
+        }
+    )
 
 
 @api_bp.get("/student/profile")
