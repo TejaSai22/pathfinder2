@@ -1,17 +1,18 @@
-import { StrictMode, Suspense } from 'react'
+import { StrictMode, Suspense, lazy, type ComponentType } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import './index.css'
+import { AuthProvider } from './lib/auth'
 
 const Root = () => import('./pages/Root')
 const Home = () => import('./pages/Home')
 const Login = () => import('./pages/Login')
 const Register = () => import('./pages/Register')
 
-const Lazy = (factory: () => Promise<{ default: React.ComponentType<any> }>) => (
+const Lazy = (factory: () => Promise<{ default: ComponentType<any> }>) => (
   <Suspense fallback={<div>Loading...</div>}>
     {(() => {
-      const C = React.lazy(factory as any)
+      const C = lazy(factory as any)
       return <C />
     })()}
   </Suspense>
@@ -31,6 +32,8 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <RouterProvider router={router} />
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
   </StrictMode>,
 )
