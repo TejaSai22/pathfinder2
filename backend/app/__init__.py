@@ -12,7 +12,11 @@ login_manager = LoginManager()
 
 def create_app(test_config: dict | None = None) -> Flask:
     app = Flask(__name__, instance_relative_config=True, static_folder=None)
-    CORS(app, supports_credentials=True)
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=os.environ.get("FRONTEND_ORIGIN", "http://localhost:5173"),
+    )
 
     app.config.from_mapping(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-key"),
