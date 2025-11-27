@@ -4,14 +4,7 @@ import {
   applicationsApi, 
   usersApi, 
   skillsApi, 
-  notesApi,
-  JobWithMatch,
-  Application,
-  UserWithStats,
-  Skill,
-  Note,
-  SkillGapAnalysis,
-  Job
+  notesApi
 } from '@/lib/api'
 
 export function useJobs() {

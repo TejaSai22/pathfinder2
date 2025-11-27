@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { MapPin, DollarSign, Briefcase, Clock, User, Target } from "lucide-react"
+import { MapPin, DollarSign, Briefcase, Clock, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface EntityCardProps {
@@ -44,7 +43,6 @@ function getStatusVariant(status: string): "default" | "secondary" | "destructiv
 }
 
 export function EntityCard({
-  type,
   title,
   subtitle,
   description,

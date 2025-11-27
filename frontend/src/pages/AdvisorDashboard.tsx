@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Loader2, ArrowLeft, MessageSquare, GraduationCap, Target, FileText } from 'lucide-react'
-import { UserWithStats, JobWithMatch, Application } from '@/lib/api'
+import { UserWithStats, JobWithMatch } from '@/lib/api'
 
 export function AdvisorDashboard() {
   const { user } = useAuth()
