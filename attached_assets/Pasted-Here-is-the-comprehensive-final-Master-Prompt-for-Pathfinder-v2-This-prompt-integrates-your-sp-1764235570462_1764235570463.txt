@@ -1,0 +1,122 @@
+Here is the comprehensive, final **Master Prompt** for Pathfinder v2. This prompt integrates your specific pivots: **Unified UI** (no Kanban), **Real-Time Reactivity**, **IT-Only Focus**, and the **Weighted Matching Algorithm**.
+
+You can paste this directly into your AI coding assistant to generate the project code.
+
+***
+
+# 🚀 Ultimate Master Prompt: Pathfinder v2 (Unified IT Edition)
+
+**Role:** Senior Full-Stack Architect & Lead Developer.
+**Project:** "Pathfinder v2" - A Specialized, Real-Time Career System for the **IT Sector**.
+**Core Design Philosophy:** **"Unified UI."**
+We are **NOT** building disjointed dashboards. We are building a single, consistent interface where Students, Employers, and Advisors interact with shared components (Lists, Cards, and Radar Charts). **Do NOT implement Kanban boards.**
+
+---
+
+## 1. 🏗️ Tech Stack & Architecture
+
+* **Backend:** Python 3.11+, **FastAPI**, **SQLAlchemy 2.0** (Async), **Alembic**, **Pydantic**.
+    * *Data Source:* O*NET Database (Filtered).
+* **Frontend:** **React 18** (Vite), **TypeScript**, **Tailwind CSS**, **ShadCN UI**, **Recharts**.
+    * *State Management:* **TanStack Query (React Query)**. This is non-negotiable for "Real-Time" reactivity.
+* **Database:** PostgreSQL.
+* **Auth:** JWT stored in **HttpOnly Cookies**. Login via a **Role Selector**.
+
+---
+
+## 2. 🧠 Domain Logic (The "Brain")
+
+### A. The "Benjamin Fix" (Weighted Matching)
+You must implement a **Weighted Jaccard Similarity** algorithm in `services/ml_service.py` to ensure IT skills carry more weight.
+1.  **Tagging:** In the DB, the `Skill` model has an `is_technical` boolean.
+2.  **Formula:**
+    * `Tech_Matches = (Matching Technical Skills) * 2`
+    * `Soft_Matches = (Matching Soft Skills) * 1`
+    * `Total_Score = (Tech_Matches + Soft_Matches) / (Total_Job_Weighted_Requirements)`
+3.  **Result:** This ensures a candidate with matching IT skills (Python, SQL) gets a high score (85%+), while generic matches get low scores.
+
+### B. IT-Only Constraint
+In `services/onet_ingest.py`, strictly filter the O*NET import:
+* **Rule:** Only ingest occupations where `SOC_Code` starts with `15-` (Computer/Mathematical). Ignore all others.
+
+---
+
+## 3. 👥 Unified User Experience (The "Mirror Principle")
+
+The UI must use shared components to create a consistent experience across roles.
+
+### A. The "Universal" Login
+* **Page:** `LoginPage.tsx`
+* **UI:** A clean form with a prominent **Role Switcher** (Tabs): `[ Student ]` `[ Employer ]` `[ Advisor ]`.
+* **Logic:** The selected role determines the dashboard view after auth.
+
+### B. Student Workflow (The Source)
+* **Profile:** Real-time inputs for Academic Background and Skills.
+* **Job Feed (List View):** A list of `EntityCard` components showing Job Titles and **Match Scores**.
+* **Visualizer:** Clicking a job opens the `SkillGapChart` (Radar Chart) showing "My Skills" vs "Job Requirements".
+* **Action:** "Apply Now" button opens a modal to submit a cover letter.
+
+### C. Employer Workflow (The "Inbox")
+* **No Kanban:** Use a **List View** similar to the Student's Job Feed.
+* **Job Management:** Create/Edit IT Job Postings.
+* **Applicant Review:**
+    * Clicking a Job opens the **"Applicant Inbox"**.
+    * **The Mirror:** Clicking an applicant shows the **exact same** `SkillGapChart` the student sees.
+    * **Action:** "Interview" or "Reject" buttons. These updates are instant.
+
+### D. Advisor Workflow (The "Shadow")
+* **Student List:** A Grid View of assigned students. Cards show "Name," "Avg Match Score," and "Application Count."
+* **Shadow Mode:**
+    * Clicking a student opens a **Read-Only version of the Student Dashboard**.
+    * The Advisor sees the student's *actual* Job Feed and Skill Gaps.
+    * **Action:** A floating "Add Guidance Note" button to recommend "Higher Studies" or "Certifications" based on the data.
+
+---
+
+## 4. 📂 Directory Structure & Schema
+
+### Backend (`backend/app/`)
+* `models/`:
+    * `User` (Role Enum: STUDENT, EMPLOYER, ADVISOR).
+    * `Profile` (1:1 with User).
+    * `Skill` (`name`, `is_technical`).
+    * `Job` (`title`, `required_skills`).
+    * `Application` (`status`, `cover_letter`).
+    * `Note` (Advisor notes on a Student).
+* `services/`:
+    * `ml_service.py` (The Weighted Logic).
+    * `onet_ingest.py` (The IT Filter).
+
+### Frontend (`frontend/src/`)
+* `components/shared/`:
+    * `EntityCard.tsx` (Reused for Jobs, Applicants, and Students).
+    * `SkillGapChart.tsx` (Reused for all 3 roles).
+* `hooks/`:
+    * `useRealTime.ts` (React Query wrappers for auto-invalidation).
+
+---
+
+## 5. 🛠️ Execution Steps
+
+**Step 1: Scaffold & Schema**
+Generate the FastAPI project and the SQLAlchemy models (`User`, `Skill`, `Job`, `Application`). Ensure `Skill` has the `is_technical` flag.
+
+**Step 2: The "Brain" Implementation**
+Implement `ml_service.py` with the Weighted Formula.
+Implement `onet_ingest.py` with the `SOC 15-` filter.
+
+**Step 3: Frontend Foundations**
+Scaffold React + Vite. Create the `EntityCard` and `SkillGapChart` (using Recharts).
+
+**Step 4: The Unified Flows**
+1.  **Student:** Build the Profile and Job Feed.
+2.  **Employer:** Build the Job Posting and Applicant Inbox (reusing `EntityCard`).
+3.  **Advisor:** Build the Student Grid and "Shadow Mode" (reusing the Student Job Feed component).
+
+**Step 5: Wiring React Query**
+Ensure that when an Employer clicks "Reject," the status updates in the cache immediately so the Student sees it instantly without a page reload.
+
+---
+
+**Immediate Request:**
+Start by generating the **SQLAlchemy Models** (`backend/app/models.py`) and the **ML Service** (`backend/app/services/ml_service.py`) so I can verify the "Benjamin Fix" and "IT Filter" are correctly architected.
