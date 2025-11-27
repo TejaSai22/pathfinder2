@@ -4,22 +4,24 @@
 Pathfinder v2 is a specialized, real-time IT career matching platform that connects students, employers, and advisors. The system uses a weighted matching algorithm prioritizing technical IT skills (2x weight) over soft skills.
 
 ## Current State
-- **Status**: Development complete, both services running
+- **Status**: Production-ready, single unified service
 - **Last Updated**: November 27, 2025
+- **Architecture**: Monolithic deployment (FastAPI serves both API and built frontend)
 
 ## Architecture
 
-### Backend (FastAPI + PostgreSQL)
+### Unified Backend (FastAPI + PostgreSQL)
 - **Framework**: FastAPI with async SQLAlchemy 2.0
 - **Database**: PostgreSQL with asyncpg driver
 - **Authentication**: JWT tokens in HttpOnly cookies
-- **Port**: 8000
+- **Port**: 5000 (serves both API and static frontend)
+- **Frontend Build**: Pre-built React app served via FastAPI static files
 
-### Frontend (React + TypeScript)
-- **Framework**: React 18 with Vite
+### Frontend (React + TypeScript - Built)
+- **Framework**: React 18 with Vite (production build)
 - **Styling**: Tailwind CSS + ShadCN UI
 - **State Management**: TanStack Query for real-time updates
-- **Port**: 5000
+- **Build Output**: `frontend/dist/` served by FastAPI
 
 ### Key Features
 1. **Weighted Matching Algorithm**: Technical IT skills get 2x weight vs soft skills
@@ -57,10 +59,16 @@ frontend/
 
 ## Running the Application
 
-### Development
-Both services are configured as Replit workflows:
-- **Backend API**: `cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
-- **Frontend**: `cd frontend && npm run dev`
+### Development/Production
+Single unified workflow serves everything:
+- **Backend API**: `cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 5000 --reload`
+
+### Rebuilding Frontend
+If you make frontend changes, rebuild with:
+```bash
+cd frontend && npm run build
+```
+The FastAPI server will automatically serve the updated build from `frontend/dist/`.
 
 ### Demo Accounts
 Password for all demo accounts: `demo123`
