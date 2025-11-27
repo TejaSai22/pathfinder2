@@ -46,11 +46,14 @@ def decode_token(token: str) -> Optional[dict]:
 
 
 def set_auth_cookie(response: Response, token: str):
+    import os
+    is_production = os.environ.get("REPL_SLUG") and os.environ.get("REPL_OWNER")
+    
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=True,
+        secure=is_production,
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         path="/"
@@ -77,6 +80,8 @@ async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ) -> User:
+    from sqlalchemy.orm import selectinload
+    
     token = await get_token_from_request(request)
     
     if not token:
@@ -99,7 +104,11 @@ async def get_current_user(
             detail="Invalid token payload"
         )
     
-    result = await db.execute(select(User).where(User.id == int(user_id)))
+    result = await db.execute(
+        select(User)
+        .where(User.id == int(user_id))
+        .options(selectinload(User.profile), selectinload(User.skills))
+    )
     user = result.scalar_one_or_none()
     
     if not user:

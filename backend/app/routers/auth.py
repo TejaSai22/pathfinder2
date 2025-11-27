@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models import User, Profile, UserRole
 from app.schemas import UserCreate, UserLogin, UserResponse, TokenResponse
@@ -43,7 +44,13 @@ async def register(
     profile = Profile(user_id=new_user.id)
     db.add(profile)
     await db.commit()
-    await db.refresh(new_user)
+    
+    result = await db.execute(
+        select(User)
+        .where(User.id == new_user.id)
+        .options(selectinload(User.profile), selectinload(User.skills))
+    )
+    new_user = result.scalar_one()
     
     token = create_access_token(data={"sub": str(new_user.id), "role": new_user.role.value})
     set_auth_cookie(response, token)
@@ -57,7 +64,11 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db)
 ):
-    result = await db.execute(select(User).where(User.email == login_data.email))
+    result = await db.execute(
+        select(User)
+        .where(User.email == login_data.email)
+        .options(selectinload(User.profile), selectinload(User.skills))
+    )
     user = result.scalar_one_or_none()
     
     if not user or not verify_password(login_data.password, user.password_hash):
