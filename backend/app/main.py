@@ -1,0 +1,45 @@
+import os
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from app.database import engine, Base
+from app.routers import auth, users, jobs, applications, skills, notes
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    from app.seed import seed_initial_data
+    await seed_initial_data()
+    
+    yield
+
+
+app = FastAPI(
+    title="Pathfinder v2 API",
+    description="IT Career Matching Platform - Connecting Students, Employers, and Advisors",
+    version="2.0.0",
+    lifespan=lifespan
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth.router, prefix="/api")
+app.include_router(users.router, prefix="/api")
+app.include_router(jobs.router, prefix="/api")
+app.include_router(applications.router, prefix="/api")
+app.include_router(skills.router, prefix="/api")
+app.include_router(notes.router, prefix="/api")
+
+
+@app.get("/api/health")
+async def health_check():
+    return {"status": "healthy", "service": "pathfinder-v2"}

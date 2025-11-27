@@ -1,0 +1,198 @@
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
+from app.database import get_db
+from app.models import User, Job, Application, Skill, UserRole, ApplicationStatus, advisor_students
+from app.schemas import (
+    ApplicationCreate,
+    ApplicationUpdate,
+    ApplicationResponse
+)
+from app.auth import get_current_user, require_student, require_employer
+from app.services.ml_service import SkillData, calculate_weighted_match
+
+router = APIRouter(prefix="/applications", tags=["Applications"])
+
+
+def skill_to_skill_data(skill: Skill) -> SkillData:
+    return SkillData(id=skill.id, name=skill.name, is_technical=skill.is_technical)
+
+
+@router.get("/my-applications", response_model=List[ApplicationResponse])
+async def get_my_applications(
+    current_user: User = Depends(require_student),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Application)
+        .options(
+            selectinload(Application.job).selectinload(Job.required_skills),
+            selectinload(Application.job).selectinload(Job.employer).selectinload(User.profile)
+        )
+        .where(Application.applicant_id == current_user.id)
+        .order_by(Application.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.post("", response_model=ApplicationResponse, status_code=status.HTTP_201_CREATED)
+async def create_application(
+    app_data: ApplicationCreate,
+    current_user: User = Depends(require_student),
+    db: AsyncSession = Depends(get_db)
+):
+    job_result = await db.execute(
+        select(Job).options(selectinload(Job.required_skills)).where(Job.id == app_data.job_id, Job.is_active == True)
+    )
+    job = job_result.scalar_one_or_none()
+    
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found or not active"
+        )
+    
+    existing = await db.execute(
+        select(Application).where(
+            Application.job_id == app_data.job_id,
+            Application.applicant_id == current_user.id
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You have already applied to this job"
+        )
+    
+    user_result = await db.execute(
+        select(User).options(selectinload(User.skills)).where(User.id == current_user.id)
+    )
+    user = user_result.scalar_one()
+    
+    candidate_skills = [skill_to_skill_data(s) for s in user.skills]
+    job_skills = [skill_to_skill_data(s) for s in job.required_skills]
+    match_result = calculate_weighted_match(candidate_skills, job_skills)
+    
+    application = Application(
+        job_id=app_data.job_id,
+        applicant_id=current_user.id,
+        cover_letter=app_data.cover_letter,
+        match_score=round(match_result.score * 100, 1)
+    )
+    db.add(application)
+    await db.commit()
+    
+    result = await db.execute(
+        select(Application)
+        .options(
+            selectinload(Application.job).selectinload(Job.required_skills),
+            selectinload(Application.applicant).selectinload(User.profile)
+        )
+        .where(Application.id == application.id)
+    )
+    return result.scalar_one()
+
+
+@router.get("/job/{job_id}", response_model=List[ApplicationResponse])
+async def get_job_applications(
+    job_id: int,
+    current_user: User = Depends(require_employer),
+    db: AsyncSession = Depends(get_db)
+):
+    job_result = await db.execute(
+        select(Job).where(Job.id == job_id, Job.employer_id == current_user.id)
+    )
+    if not job_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found or you don't have permission"
+        )
+    
+    result = await db.execute(
+        select(Application)
+        .options(
+            selectinload(Application.applicant).selectinload(User.profile),
+            selectinload(Application.applicant).selectinload(User.skills)
+        )
+        .where(Application.job_id == job_id)
+        .order_by(Application.match_score.desc().nullslast(), Application.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.put("/{application_id}/status", response_model=ApplicationResponse)
+async def update_application_status(
+    application_id: int,
+    update_data: ApplicationUpdate,
+    current_user: User = Depends(require_employer),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Application)
+        .options(selectinload(Application.job))
+        .where(Application.id == application_id)
+    )
+    application = result.scalar_one_or_none()
+    
+    if not application:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Application not found"
+        )
+    
+    if application.job.employer_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have permission to update this application"
+        )
+    
+    application.status = update_data.status
+    await db.commit()
+    
+    result = await db.execute(
+        select(Application)
+        .options(
+            selectinload(Application.job).selectinload(Job.required_skills),
+            selectinload(Application.applicant).selectinload(User.profile)
+        )
+        .where(Application.id == application_id)
+    )
+    return result.scalar_one()
+
+
+@router.get("/student/{student_id}", response_model=List[ApplicationResponse])
+async def get_student_applications(
+    student_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    if current_user.role == UserRole.ADVISOR:
+        advisor_check = await db.execute(
+            select(advisor_students).where(
+                advisor_students.c.advisor_id == current_user.id,
+                advisor_students.c.student_id == student_id
+            )
+        )
+        if not advisor_check.first():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This student is not assigned to you"
+            )
+    elif current_user.id != student_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only view your own applications"
+        )
+    
+    result = await db.execute(
+        select(Application)
+        .options(
+            selectinload(Application.job).selectinload(Job.required_skills),
+            selectinload(Application.job).selectinload(Job.employer).selectinload(User.profile)
+        )
+        .where(Application.applicant_id == student_id)
+        .order_by(Application.created_at.desc())
+    )
+    return result.scalars().all()
