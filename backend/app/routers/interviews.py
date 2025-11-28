@@ -106,6 +106,23 @@ async def schedule_interview(
             detail="Application not found or you don't have permission"
         )
     
+    from datetime import timedelta
+    start_time = interview_data.scheduled_at
+    end_time = start_time + timedelta(minutes=interview_data.duration_minutes)
+    
+    existing = await db.execute(
+        select(Interview)
+        .where(Interview.application_id == interview_data.application_id)
+        .where(Interview.status != InterviewStatus.CANCELLED)
+        .where(Interview.scheduled_at < end_time)
+        .where(Interview.scheduled_at + timedelta(minutes=60) > start_time)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An interview is already scheduled for this time"
+        )
+    
     application.status = ApplicationStatus.INTERVIEW
     
     interview = Interview(
@@ -160,7 +177,7 @@ async def update_interview(
     return interview
 
 
-@router.delete("/{interview_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{interview_id}", response_model=InterviewResponse)
 async def cancel_interview(
     interview_id: int,
     current_user: User = Depends(get_current_user),
@@ -183,3 +200,6 @@ async def cancel_interview(
     
     interview.status = InterviewStatus.CANCELLED
     await db.commit()
+    await db.refresh(interview)
+    
+    return interview
