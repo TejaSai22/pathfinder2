@@ -9,7 +9,9 @@ from app.models import User, Job, Application, Skill, UserRole, ApplicationStatu
 from app.schemas import (
     ApplicationCreate,
     ApplicationUpdate,
-    ApplicationResponse
+    ApplicationResponse,
+    BulkApplicationUpdate,
+    BulkUpdateResult
 )
 from app.auth import get_current_user, require_student, require_employer
 from app.services.ml_service import SkillData, calculate_weighted_match
@@ -220,3 +222,100 @@ async def get_student_applications(
         .order_by(Application.created_at.desc())
     )
     return result.scalars().all()
+
+
+@router.put("/bulk-update", response_model=BulkUpdateResult)
+async def bulk_update_applications(
+    update_data: BulkApplicationUpdate,
+    current_user: User = Depends(require_employer),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Bulk update multiple applications at once with transactional safety.
+    All updates succeed or all are rolled back.
+    Only the employer who owns the jobs can update their applications.
+    """
+    not_found_ids = []
+    unauthorized_ids = []
+    applications_to_update = []
+    
+    for app_id in update_data.application_ids:
+        result = await db.execute(
+            select(Application)
+            .options(
+                selectinload(Application.job),
+                selectinload(Application.applicant)
+            )
+            .where(Application.id == app_id)
+        )
+        application = result.scalar_one_or_none()
+        
+        if not application:
+            not_found_ids.append(app_id)
+            continue
+            
+        if application.job.employer_id != current_user.id:
+            unauthorized_ids.append(app_id)
+            continue
+        
+        applications_to_update.append(application)
+    
+    if not_found_ids:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Applications not found: {not_found_ids}"
+        )
+    
+    if unauthorized_ids:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"You don't have permission to update these applications: {unauthorized_ids}"
+        )
+    
+    if not applications_to_update:
+        return BulkUpdateResult(
+            updated_count=0,
+            failed_count=0,
+            failed_ids=[],
+            message="No applications to update"
+        )
+    
+    try:
+        notifications_to_send = []
+        
+        for application in applications_to_update:
+            old_status = application.status.value
+            application.status = update_data.status
+            
+            if update_data.feedback_notes:
+                application.feedback_notes = update_data.feedback_notes
+                application.feedback_by = current_user.id
+                application.feedback_at = datetime.utcnow()
+            
+            notifications_to_send.append((application, old_status))
+        
+        await db.commit()
+        
+        for application, old_status in notifications_to_send:
+            try:
+                await notify_application_status_changed(
+                    db, application, application.job,
+                    old_status, update_data.status.value,
+                    update_data.feedback_notes
+                )
+            except Exception:
+                pass
+        
+        return BulkUpdateResult(
+            updated_count=len(applications_to_update),
+            failed_count=0,
+            failed_ids=[],
+            message=f"Successfully updated {len(applications_to_update)} application(s)"
+        )
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update applications: {str(e)}"
+        )

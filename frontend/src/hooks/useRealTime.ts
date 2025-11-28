@@ -5,13 +5,16 @@ import {
   usersApi, 
   skillsApi, 
   notesApi,
-  careersApi
+  careersApi,
+  interviewsApi,
+  analyticsApi,
+  JobSearchParams
 } from '@/lib/api'
 
-export function useJobs() {
+export function useJobs(params?: JobSearchParams) {
   return useQuery({
-    queryKey: ['jobs'],
-    queryFn: jobsApi.list,
+    queryKey: ['jobs', params],
+    queryFn: () => jobsApi.list(params),
     staleTime: 10000,
   })
 }
@@ -116,6 +119,17 @@ export function useStudentApplications(studentId: number) {
     queryKey: ['applications', 'student', studentId],
     queryFn: () => applicationsApi.getStudentApplications(studentId),
     enabled: !!studentId,
+  })
+}
+
+export function useBulkUpdateApplications() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: applicationsApi.bulkUpdate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
+    },
   })
 }
 
@@ -247,5 +261,86 @@ export function useLearningResourcesForMissingSkills(skillIds: number[]) {
     queryKey: ['learning-resources', 'missing', skillIds],
     queryFn: () => careersApi.getResourcesForMissingSkills(skillIds),
     enabled: skillIds.length > 0,
+  })
+}
+
+export function useInterviews() {
+  return useQuery({
+    queryKey: ['interviews'],
+    queryFn: interviewsApi.list,
+    staleTime: 10000,
+  })
+}
+
+export function useScheduleInterview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: interviewsApi.schedule,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['interviews'] })
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+    },
+  })
+}
+
+export function useUpdateInterview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ interviewId, data }: { interviewId: number; data: Parameters<typeof interviewsApi.update>[1] }) =>
+      interviewsApi.update(interviewId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['interviews'] })
+    },
+  })
+}
+
+export function useCancelInterview() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: interviewsApi.cancel,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['interviews'] })
+      queryClient.invalidateQueries({ queryKey: ['applications'] })
+    },
+  })
+}
+
+export function useAnalyticsOverview() {
+  return useQuery({
+    queryKey: ['analytics', 'overview'],
+    queryFn: analyticsApi.getOverview,
+    staleTime: 30000,
+  })
+}
+
+export function useSkillDemand(limit?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'skill-demand', limit],
+    queryFn: () => analyticsApi.getSkillDemand(limit),
+    staleTime: 30000,
+  })
+}
+
+export function useApplicationTrends() {
+  return useQuery({
+    queryKey: ['analytics', 'application-trends'],
+    queryFn: analyticsApi.getApplicationTrends,
+    staleTime: 30000,
+  })
+}
+
+export function useStudentPerformance() {
+  return useQuery({
+    queryKey: ['analytics', 'student-performance'],
+    queryFn: analyticsApi.getStudentPerformance,
+    staleTime: 30000,
+  })
+}
+
+export function useTopEmployers(limit?: number) {
+  return useQuery({
+    queryKey: ['analytics', 'top-employers', limit],
+    queryFn: () => analyticsApi.getTopEmployers(limit),
+    staleTime: 30000,
   })
 }

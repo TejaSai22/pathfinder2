@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
-import { User, Briefcase, GraduationCap, Users, LogOut, Home } from 'lucide-react'
+import { User, Briefcase, GraduationCap, Users, LogOut, Home, Calendar } from 'lucide-react'
 import { NotificationsDropdown } from '@/components/shared/NotificationsDropdown'
 
 interface LayoutProps {
@@ -91,6 +91,16 @@ export function Layout({ children }: LayoutProps) {
                         My Applications
                       </Button>
                     </Link>
+                    <Link to="/interviews">
+                      <Button 
+                        variant={location.pathname === '/interviews' ? 'secondary' : 'ghost'} 
+                        size="sm"
+                        className="gap-1"
+                      >
+                        <Calendar className="w-4 h-4" />
+                        Interviews
+                      </Button>
+                    </Link>
                   </>
                 )}
                 
@@ -110,6 +120,16 @@ export function Layout({ children }: LayoutProps) {
                         size="sm"
                       >
                         Post Job
+                      </Button>
+                    </Link>
+                    <Link to="/interviews">
+                      <Button 
+                        variant={location.pathname === '/interviews' ? 'secondary' : 'ghost'} 
+                        size="sm"
+                        className="gap-1"
+                      >
+                        <Calendar className="w-4 h-4" />
+                        Interviews
                       </Button>
                     </Link>
                   </>

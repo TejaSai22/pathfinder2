@@ -8,6 +8,7 @@ import { AdvisorDashboard } from '@/pages/AdvisorDashboard'
 import { ProfilePage } from '@/pages/ProfilePage'
 import { PostJobPage } from '@/pages/PostJobPage'
 import { MyApplicationsPage } from '@/pages/MyApplicationsPage'
+import { InterviewsPage } from '@/pages/InterviewsPage'
 import { Loader2 } from 'lucide-react'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -111,6 +112,15 @@ function App() {
         element={
           <ProtectedRoute>
             <AdvisorDashboard />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/interviews"
+        element={
+          <ProtectedRoute>
+            <InterviewsPage />
           </ProtectedRoute>
         }
       />

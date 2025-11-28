@@ -32,7 +32,16 @@ async def list_jobs(
     db: AsyncSession = Depends(get_db),
     active_only: bool = Query(True),
     limit: int = Query(50, le=100),
-    offset: int = Query(0)
+    offset: int = Query(0),
+    search: Optional[str] = Query(None, description="Search in title and description"),
+    location: Optional[str] = Query(None, description="Filter by location"),
+    min_salary: Optional[int] = Query(None, description="Minimum salary"),
+    max_salary: Optional[int] = Query(None, description="Maximum salary"),
+    experience_level: Optional[str] = Query(None, description="Experience level: entry, mid, senior"),
+    job_type: Optional[str] = Query(None, description="Job type: full-time, part-time, contract, internship"),
+    min_match_score: Optional[int] = Query(None, description="Minimum match score (0-100)"),
+    sort_by: Optional[str] = Query("created_at", description="Sort by: created_at, match_score, salary"),
+    sort_order: Optional[str] = Query("desc", description="Sort order: asc, desc")
 ):
     query = select(Job).options(
         selectinload(Job.required_skills),
@@ -42,7 +51,38 @@ async def list_jobs(
     if active_only:
         query = query.where(Job.is_active == True)
     
-    query = query.order_by(Job.created_at.desc()).limit(limit).offset(offset)
+    if search:
+        search_term = f"%{search.lower()}%"
+        query = query.where(
+            (Job.title.ilike(search_term)) | (Job.description.ilike(search_term))
+        )
+    
+    if location:
+        query = query.where(Job.location.ilike(f"%{location}%"))
+    
+    if min_salary:
+        query = query.where(Job.salary_min >= min_salary)
+    
+    if max_salary:
+        query = query.where(Job.salary_max <= max_salary)
+    
+    if experience_level:
+        query = query.where(Job.experience_level.ilike(f"%{experience_level}%"))
+    
+    if job_type:
+        query = query.where(Job.job_type.ilike(f"%{job_type}%"))
+    
+    if sort_by == "salary":
+        order_col = Job.salary_max if sort_order == "desc" else Job.salary_min
+    else:
+        order_col = Job.created_at
+    
+    if sort_order == "asc":
+        query = query.order_by(order_col.asc())
+    else:
+        query = query.order_by(order_col.desc())
+    
+    query = query.limit(limit).offset(offset)
     result = await db.execute(query)
     jobs = result.scalars().all()
     
@@ -79,9 +119,16 @@ async def list_jobs(
             missing_technical=match_result.missing_technical,
             missing_soft=match_result.missing_soft
         )
-        jobs_with_match.append(job_data)
+        if min_match_score is None or job_data.match_score >= min_match_score:
+            jobs_with_match.append(job_data)
     
-    jobs_with_match.sort(key=lambda x: x.match_score, reverse=True)
+    if sort_by == "match_score":
+        jobs_with_match.sort(key=lambda x: x.match_score, reverse=(sort_order == "desc"))
+    elif sort_by == "salary":
+        jobs_with_match.sort(key=lambda x: x.salary_max or 0, reverse=(sort_order == "desc"))
+    else:
+        jobs_with_match.sort(key=lambda x: x.match_score, reverse=True)
+    
     return jobs_with_match
 
 

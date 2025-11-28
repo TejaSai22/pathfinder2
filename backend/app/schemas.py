@@ -147,6 +147,19 @@ class ApplicationUpdate(BaseModel):
     feedback_notes: Optional[str] = None
 
 
+class BulkApplicationUpdate(BaseModel):
+    application_ids: List[int]
+    status: ApplicationStatus
+    feedback_notes: Optional[str] = None
+
+
+class BulkUpdateResult(BaseModel):
+    updated_count: int
+    failed_count: int
+    failed_ids: List[int] = []
+    message: str
+
+
 class ApplicationResponse(ApplicationBase):
     id: int
     job_id: int

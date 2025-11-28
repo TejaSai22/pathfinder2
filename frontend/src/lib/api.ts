@@ -128,6 +128,29 @@ export interface Note {
   updated_at: string
 }
 
+export type InterviewStatus = 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'rescheduled'
+
+export interface Interview {
+  id: number
+  application_id: number
+  scheduled_at: string
+  duration_minutes: number
+  interview_type: string
+  location?: string
+  meeting_link?: string
+  notes?: string
+  status: InterviewStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface InterviewWithDetails extends Interview {
+  applicant_name: string
+  applicant_email: string
+  job_title: string
+  company_name: string
+}
+
 export interface SkillGapData {
   skill: string
   skill_id?: number
@@ -251,9 +274,33 @@ export const usersApi = {
     fetchApi('/users/me/resume', { method: 'DELETE' }),
 }
 
+export interface JobSearchParams {
+  search?: string
+  location?: string
+  min_salary?: number
+  max_salary?: number
+  experience_level?: string
+  job_type?: string
+  min_match_score?: number
+  sort_by?: 'created_at' | 'match_score' | 'salary'
+  sort_order?: 'asc' | 'desc'
+}
+
 export const jobsApi = {
-  list: () =>
-    fetchApi<JobWithMatch[]>('/jobs'),
+  list: (params?: JobSearchParams) => {
+    const searchParams = new URLSearchParams()
+    if (params?.search) searchParams.set('search', params.search)
+    if (params?.location) searchParams.set('location', params.location)
+    if (params?.min_salary) searchParams.set('min_salary', String(params.min_salary))
+    if (params?.max_salary) searchParams.set('max_salary', String(params.max_salary))
+    if (params?.experience_level) searchParams.set('experience_level', params.experience_level)
+    if (params?.job_type) searchParams.set('job_type', params.job_type)
+    if (params?.min_match_score) searchParams.set('min_match_score', String(params.min_match_score))
+    if (params?.sort_by) searchParams.set('sort_by', params.sort_by)
+    if (params?.sort_order) searchParams.set('sort_order', params.sort_order)
+    const query = searchParams.toString()
+    return fetchApi<JobWithMatch[]>(`/jobs${query ? `?${query}` : ''}`)
+  },
   
   getMyJobs: () =>
     fetchApi<Job[]>('/jobs/my-jobs'),
@@ -272,6 +319,13 @@ export const jobsApi = {
   
   getSkillGap: (jobId: number, userId?: number) =>
     fetchApi<SkillGapAnalysis>(`/jobs/${jobId}/skill-gap${userId ? `?user_id=${userId}` : ''}`),
+}
+
+export interface BulkUpdateResult {
+  updated_count: number
+  failed_count: number
+  failed_ids: number[]
+  message: string
 }
 
 export const applicationsApi = {
@@ -298,6 +352,12 @@ export const applicationsApi = {
   
   getStudentApplications: (studentId: number) =>
     fetchApi<Application[]>(`/applications/student/${studentId}`),
+  
+  bulkUpdate: (data: { application_ids: number[]; status: string; feedback_notes?: string }) =>
+    fetchApi<BulkUpdateResult>('/applications/bulk-update', { 
+      method: 'PUT', 
+      body: JSON.stringify(data) 
+    }),
 }
 
 export const skillsApi = {
@@ -364,4 +424,87 @@ export const applicationsApiExtended = {
       method: 'PUT', 
       body: JSON.stringify({ status, feedback_notes: feedbackNotes }) 
     }),
+}
+
+export const interviewsApi = {
+  list: () =>
+    fetchApi<InterviewWithDetails[]>('/interviews'),
+  
+  schedule: (data: { 
+    application_id: number
+    scheduled_at: string
+    duration_minutes?: number
+    interview_type?: string
+    location?: string
+    meeting_link?: string
+    notes?: string 
+  }) =>
+    fetchApi<Interview>('/interviews', { method: 'POST', body: JSON.stringify(data) }),
+  
+  update: (interviewId: number, data: {
+    scheduled_at?: string
+    duration_minutes?: number
+    interview_type?: string
+    location?: string
+    meeting_link?: string
+    notes?: string
+    status?: InterviewStatus
+  }) =>
+    fetchApi<Interview>(`/interviews/${interviewId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  
+  cancel: (interviewId: number) =>
+    fetchApi<Interview>(`/interviews/${interviewId}`, { method: 'DELETE' }),
+}
+
+export interface OverviewStats {
+  total_students: number
+  total_applications: number
+  total_interviews: number
+  total_offers: number
+  placement_rate: number
+  avg_match_score: number
+}
+
+export interface SkillDemand {
+  skill_name: string
+  demand_count: number
+  is_technical: boolean
+}
+
+export interface ApplicationTrend {
+  status: string
+  count: number
+  percentage: number
+}
+
+export interface StudentPerformance {
+  student_id: number
+  student_name: string
+  email: string
+  application_count: number
+  avg_match_score: number
+  status_distribution: Record<string, number>
+}
+
+export interface TopEmployer {
+  employer_name: string
+  job_count: number
+  application_count: number
+}
+
+export const analyticsApi = {
+  getOverview: () =>
+    fetchApi<OverviewStats>('/analytics/overview'),
+  
+  getSkillDemand: (limit?: number) =>
+    fetchApi<SkillDemand[]>(`/analytics/skill-demand${limit ? `?limit=${limit}` : ''}`),
+  
+  getApplicationTrends: () =>
+    fetchApi<ApplicationTrend[]>('/analytics/application-trends'),
+  
+  getStudentPerformance: () =>
+    fetchApi<StudentPerformance[]>('/analytics/student-performance'),
+  
+  getTopEmployers: (limit?: number) =>
+    fetchApi<TopEmployer[]>(`/analytics/top-employers${limit ? `?limit=${limit}` : ''}`),
 }

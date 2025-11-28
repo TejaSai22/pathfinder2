@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.database import engine, Base
-from app.routers import auth, users, jobs, applications, skills, notes, interviews, notifications, careers
+from app.routers import auth, users, jobs, applications, skills, notes, interviews, notifications, careers, analytics
 
 FRONTEND_DIR = Path(__file__).parent.parent.parent / "frontend" / "dist"
 
@@ -46,6 +46,7 @@ app.include_router(notes.router, prefix="/api")
 app.include_router(interviews.router, prefix="/api")
 app.include_router(notifications.router, prefix="/api")
 app.include_router(careers.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
 
 
 @app.get("/api/health")

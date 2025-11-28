@@ -40,6 +40,12 @@ Pathfinder v2 is a specialized, real-time IT career matching platform that conne
 12. **Skill Proficiency Ratings**: 1-5 star rating system for user skills, affects matching algorithm
 13. **Resume Upload**: Document upload/download functionality with file storage in backend/uploads directory
 
+### Iteration 2 Features
+14. **Interview Scheduling**: Full interview management system with date/time scheduling, interview types (video/phone/in-person), meeting links, duration settings, and status tracking (scheduled/confirmed/completed/cancelled/rescheduled)
+15. **Advanced Filtering & Search**: Server-side filtering for jobs by search term, location, salary range, experience level, job type, and minimum match score with sorting options
+16. **Analytics Dashboard for Advisors**: Comprehensive analytics with overview stats (placement rate, applications, offers), skill demand charts, application status distribution pie chart, student performance rankings, and top employers
+17. **Bulk Actions for Employers**: Select multiple applications and perform bulk operations (accept all, reject all, mark as reviewing) with optional bulk feedback notes
+
 ## Project Structure
 
 ```
@@ -56,10 +62,12 @@ backend/
 │   │   ├── onet_ingest.py        # O*NET data ingestion
 │   │   └── notification_service.py  # Notification creation
 │   └── routers/
-│       ├── applications.py  # Application endpoints with feedback
+│       ├── applications.py  # Application endpoints with feedback and bulk actions
 │       ├── notifications.py # Notification endpoints
 │       ├── careers.py       # Career details and learning resources
-│       └── ...              # Other routers
+│       ├── interviews.py    # Interview scheduling and management
+│       ├── analytics.py     # Analytics endpoints for advisors
+│       └── ...              # Other routers (auth, users, jobs, skills, notes)
 
 frontend/
 ├── src/
