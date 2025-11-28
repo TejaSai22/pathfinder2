@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
@@ -12,6 +13,7 @@ from app.schemas import (
 )
 from app.auth import get_current_user, require_student, require_employer
 from app.services.ml_service import SkillData, calculate_weighted_match
+from app.services.notification_service import notify_application_submitted, notify_application_status_changed
 
 router = APIRouter(prefix="/applications", tags=["Applications"])
 
@@ -54,6 +56,12 @@ async def create_application(
             detail="Job not found or not active"
         )
     
+    if job.deadline and job.deadline < datetime.utcnow():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The application deadline for this job has passed"
+        )
+    
     existing = await db.execute(
         select(Application).where(
             Application.job_id == app_data.job_id,
@@ -79,10 +87,13 @@ async def create_application(
         job_id=app_data.job_id,
         applicant_id=current_user.id,
         cover_letter=app_data.cover_letter,
+        resume_url=app_data.resume_url,
         match_score=round(match_result.score * 100, 1)
     )
     db.add(application)
     await db.commit()
+    
+    await notify_application_submitted(db, application, job)
     
     result = await db.execute(
         select(Application)
@@ -148,8 +159,21 @@ async def update_application_status(
             detail="You don't have permission to update this application"
         )
     
+    old_status = application.status.value
     application.status = update_data.status
+    
+    if update_data.feedback_notes:
+        application.feedback_notes = update_data.feedback_notes
+        application.feedback_by = current_user.id
+        application.feedback_at = datetime.utcnow()
+    
     await db.commit()
+    
+    await notify_application_status_changed(
+        db, application, application.job,
+        old_status, update_data.status.value,
+        update_data.feedback_notes
+    )
     
     result = await db.execute(
         select(Application)

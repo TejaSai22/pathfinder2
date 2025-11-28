@@ -21,6 +21,52 @@ export interface Profile {
   company_description?: string
   location?: string
   avatar_url?: string
+  resume_url?: string
+  resume_filename?: string
+}
+
+export interface Notification {
+  id: number
+  user_id: number
+  notification_type: string
+  title: string
+  message: string
+  link?: string
+  is_read: boolean
+  created_at: string
+}
+
+export interface ProfileCompletion {
+  completion_percentage: number
+  missing_fields: string[]
+  has_skills: boolean
+  skill_count: number
+  can_get_recommendations: boolean
+}
+
+export interface CareerDetail {
+  id: number
+  soc_code: string
+  title: string
+  salary_low?: number
+  salary_median?: number
+  salary_high?: number
+  demand_outlook?: string
+  growth_rate?: number
+  responsibilities?: string
+  education_required?: string
+}
+
+export interface LearningResource {
+  id: number
+  skill_id: number
+  title: string
+  provider: string
+  url: string
+  resource_type: string
+  estimated_hours?: number
+  difficulty_level?: string
+  is_free: boolean
 }
 
 export interface Skill {
@@ -41,6 +87,7 @@ export interface Job {
   job_type?: string
   experience_level?: string
   onet_soc_code?: string
+  deadline?: string
   is_active: boolean
   created_at: string
   updated_at: string
@@ -61,7 +108,10 @@ export interface Application {
   applicant_id: number
   status: 'pending' | 'reviewed' | 'interview' | 'rejected' | 'accepted'
   cover_letter?: string
+  resume_url?: string
   match_score?: number
+  feedback_notes?: string
+  feedback_at?: string
   created_at: string
   updated_at: string
   job?: Job
@@ -144,6 +194,9 @@ export const usersApi = {
   updateSkills: (skillIds: number[]) =>
     fetchApi<Skill[]>('/users/me/skills', { method: 'PUT', body: JSON.stringify(skillIds) }),
   
+  getProfileCompletion: () =>
+    fetchApi<ProfileCompletion>('/users/me/profile-completion'),
+  
   getStudents: () =>
     fetchApi<UserWithStats[]>('/users/students'),
   
@@ -225,4 +278,40 @@ export const notesApi = {
   
   getMyNotes: () =>
     fetchApi<Note[]>('/notes/my-notes'),
+}
+
+export const notificationsApi = {
+  list: () =>
+    fetchApi<Notification[]>('/notifications'),
+  
+  getUnreadCount: () =>
+    fetchApi<{ count: number }>('/notifications/unread-count'),
+  
+  markAsRead: (notificationId: number) =>
+    fetchApi<Notification>(`/notifications/${notificationId}/read`, { method: 'PUT' }),
+  
+  markAllAsRead: () =>
+    fetchApi('/notifications/read-all', { method: 'PUT' }),
+}
+
+export const careersApi = {
+  list: () =>
+    fetchApi<CareerDetail[]>('/careers'),
+  
+  get: (socCode: string) =>
+    fetchApi<CareerDetail>(`/careers/${socCode}`),
+  
+  getResourcesForSkill: (skillId: number) =>
+    fetchApi<LearningResource[]>(`/careers/resources/by-skill/${skillId}`),
+  
+  getResourcesForMissingSkills: (skillIds: number[]) =>
+    fetchApi<LearningResource[]>(`/careers/resources/for-missing-skills?skill_ids=${skillIds.join(',')}`),
+}
+
+export const applicationsApiExtended = {
+  updateStatusWithFeedback: (applicationId: number, status: string, feedbackNotes?: string) =>
+    fetchApi<Application>(`/applications/${applicationId}/status`, { 
+      method: 'PUT', 
+      body: JSON.stringify({ status, feedback_notes: feedbackNotes }) 
+    }),
 }

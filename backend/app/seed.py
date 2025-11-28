@@ -1,6 +1,6 @@
 from sqlalchemy import select, insert
 from app.database import AsyncSessionLocal
-from app.models import Skill, ONetOccupation, User, Profile, Job, UserRole, user_skills, job_skills, advisor_students
+from app.models import Skill, ONetOccupation, User, Profile, Job, UserRole, user_skills, job_skills, advisor_students, CareerDetail, LearningResource
 from app.services.onet_ingest import get_default_skills, get_default_it_occupations
 from app.auth import get_password_hash
 
@@ -161,6 +161,73 @@ async def seed_initial_data():
                     await db.execute(
                         insert(job_skills).values(job_id=job3.id, skill_id=skill_map[skill_name])
                     )
+            
+            career_details = [
+                CareerDetail(
+                    soc_code="15-1252",
+                    title="Software Developers",
+                    description="Design, develop, and test software applications. Work with programming languages and development frameworks.",
+                    median_salary=120730,
+                    job_outlook="22% growth (much faster than average)",
+                    education_required="Bachelor's degree in computer science or related field",
+                    work_environment="Most work in offices or remotely. May work on teams with other developers.",
+                    typical_duties="Write and test code, debug programs, collaborate with team members, review code, maintain software systems.",
+                    career_progression="Junior Developer -> Mid-Level Developer -> Senior Developer -> Tech Lead -> Engineering Manager"
+                ),
+                CareerDetail(
+                    soc_code="15-2051",
+                    title="Data Scientists",
+                    description="Use analytical techniques and scientific principles to extract insights from data.",
+                    median_salary=103500,
+                    job_outlook="35% growth (much faster than average)",
+                    education_required="Master's degree preferred; Bachelor's in statistics, math, or computer science",
+                    work_environment="Office settings, often work with cross-functional teams including business analysts and engineers.",
+                    typical_duties="Collect and analyze data, build predictive models, create visualizations, present findings to stakeholders.",
+                    career_progression="Data Analyst -> Data Scientist -> Senior Data Scientist -> Principal Data Scientist -> Chief Data Officer"
+                ),
+                CareerDetail(
+                    soc_code="15-1254",
+                    title="Web Developers",
+                    description="Design and create websites. Responsible for the look and technical aspects of web applications.",
+                    median_salary=78300,
+                    job_outlook="23% growth (much faster than average)",
+                    education_required="Associate's or Bachelor's degree in web development or related field",
+                    work_environment="Office or remote work. May work as freelancers or in agencies.",
+                    typical_duties="Design user interfaces, write frontend and backend code, ensure site performance, optimize for SEO.",
+                    career_progression="Junior Web Developer -> Web Developer -> Senior Web Developer -> Full Stack Developer -> Technical Architect"
+                ),
+                CareerDetail(
+                    soc_code="15-1212",
+                    title="Information Security Analysts",
+                    description="Plan and implement security measures to protect computer networks and systems.",
+                    median_salary=112000,
+                    job_outlook="32% growth (much faster than average)",
+                    education_required="Bachelor's degree in cybersecurity, computer science, or related field",
+                    work_environment="Work in offices or security operations centers. May respond to incidents 24/7.",
+                    typical_duties="Monitor networks for breaches, install security software, conduct penetration testing, develop security policies.",
+                    career_progression="Security Analyst -> Senior Security Analyst -> Security Engineer -> Security Architect -> CISO"
+                )
+            ]
+            for career in career_details:
+                db.add(career)
+            
+            await db.flush()
+            
+            learning_resources = [
+                LearningResource(skill_id=skill_map.get("Python"), title="Python for Everybody", provider="Coursera", resource_type="course", url="https://www.coursera.org/specializations/python", is_free=False, estimated_hours=80),
+                LearningResource(skill_id=skill_map.get("Python"), title="Learn Python - Codecademy", provider="Codecademy", resource_type="course", url="https://www.codecademy.com/learn/learn-python-3", is_free=True, estimated_hours=25),
+                LearningResource(skill_id=skill_map.get("JavaScript"), title="JavaScript: The Complete Guide", provider="Udemy", resource_type="course", url="https://www.udemy.com/course/javascript-the-complete-guide-2020-beginner-advanced/", is_free=False, estimated_hours=52),
+                LearningResource(skill_id=skill_map.get("JavaScript"), title="JavaScript.info Tutorial", provider="javascript.info", resource_type="tutorial", url="https://javascript.info/", is_free=True, estimated_hours=40),
+                LearningResource(skill_id=skill_map.get("React"), title="React - The Complete Guide", provider="Udemy", resource_type="course", url="https://www.udemy.com/course/react-the-complete-guide-incl-redux/", is_free=False, estimated_hours=48),
+                LearningResource(skill_id=skill_map.get("React"), title="React Official Tutorial", provider="React.dev", resource_type="tutorial", url="https://react.dev/learn", is_free=True, estimated_hours=10),
+                LearningResource(skill_id=skill_map.get("SQL"), title="SQL for Data Science", provider="Coursera", resource_type="course", url="https://www.coursera.org/learn/sql-for-data-science", is_free=False, estimated_hours=20),
+                LearningResource(skill_id=skill_map.get("Machine Learning"), title="Machine Learning by Andrew Ng", provider="Coursera", resource_type="course", url="https://www.coursera.org/learn/machine-learning", is_free=False, estimated_hours=60),
+                LearningResource(skill_id=skill_map.get("Docker"), title="Docker for Beginners", provider="Docker Docs", resource_type="documentation", url="https://docs.docker.com/get-started/", is_free=True, estimated_hours=5),
+                LearningResource(skill_id=skill_map.get("TypeScript"), title="TypeScript Handbook", provider="TypeScript Docs", resource_type="documentation", url="https://www.typescriptlang.org/docs/", is_free=True, estimated_hours=15),
+            ]
+            for resource in learning_resources:
+                if resource.skill_id:
+                    db.add(resource)
             
             await db.commit()
             print("Initial data seeded successfully!")

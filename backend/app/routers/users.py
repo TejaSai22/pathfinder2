@@ -10,7 +10,8 @@ from app.schemas import (
     UserWithStats,
     ProfileUpdate,
     ProfileResponse,
-    SkillResponse
+    SkillResponse,
+    ProfileCompletionResponse
 )
 from app.auth import get_current_user, require_advisor
 
@@ -74,6 +75,54 @@ async def update_my_skills(
     await db.commit()
     
     return skills
+
+
+@router.get("/me/profile-completion", response_model=ProfileCompletionResponse)
+async def get_profile_completion(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(User)
+        .options(selectinload(User.profile), selectinload(User.skills))
+        .where(User.id == current_user.id)
+    )
+    user = result.scalar_one()
+    
+    required_fields = ['first_name', 'last_name', 'headline', 'bio', 'academic_background', 'location']
+    missing_fields = []
+    completed_fields = 0
+    
+    if user.profile:
+        for field in required_fields:
+            value = getattr(user.profile, field, None)
+            if value and str(value).strip():
+                completed_fields += 1
+            else:
+                missing_fields.append(field.replace('_', ' ').title())
+    else:
+        missing_fields = [f.replace('_', ' ').title() for f in required_fields]
+    
+    has_skills = len(user.skills) > 0
+    skill_count = len(user.skills)
+    
+    if has_skills:
+        completed_fields += 1
+    else:
+        missing_fields.append("Skills")
+    
+    total_fields = len(required_fields) + 1
+    completion_percentage = int((completed_fields / total_fields) * 100)
+    
+    can_get_recommendations = completion_percentage >= 80
+    
+    return ProfileCompletionResponse(
+        completion_percentage=completion_percentage,
+        missing_fields=missing_fields,
+        has_skills=has_skills,
+        skill_count=skill_count,
+        can_get_recommendations=can_get_recommendations
+    )
 
 
 @router.get("/students", response_model=List[UserWithStats])

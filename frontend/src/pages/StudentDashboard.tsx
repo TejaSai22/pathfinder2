@@ -3,6 +3,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useJobs, useCreateApplication, useSkillGap, useMyApplications } from '@/hooks/useRealTime'
 import { EntityCard } from '@/components/shared/EntityCard'
 import { SkillGapChart } from '@/components/shared/SkillGapChart'
+import { ProfileCompletionCard } from '@/components/shared/ProfileCompletionCard'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -90,6 +91,8 @@ export function StudentDashboard() {
           <p className="text-muted-foreground">Find IT jobs that match your skills</p>
         </div>
       </div>
+
+      <ProfileCompletionCard />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -245,6 +248,7 @@ export function StudentDashboard() {
                   salary={{ min: job.salary_min, max: job.salary_max }}
                   jobType={job.job_type}
                   experienceLevel={job.experience_level}
+                  deadline={job.deadline}
                   skills={job.required_skills}
                   onClick={() => setSelectedJob(job)}
                   className={selectedJob?.id === job.id ? 'ring-2 ring-primary' : ''}

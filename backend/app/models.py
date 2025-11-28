@@ -20,11 +20,21 @@ class ApplicationStatus(str, enum.Enum):
     ACCEPTED = "accepted"
 
 
+class NotificationType(str, enum.Enum):
+    APPLICATION_SUBMITTED = "application_submitted"
+    APPLICATION_STATUS_CHANGED = "application_status_changed"
+    INTERVIEW_SCHEDULED = "interview_scheduled"
+    ADVISOR_NOTE = "advisor_note"
+    JOB_DEADLINE_REMINDER = "job_deadline_reminder"
+    PROFILE_INCOMPLETE = "profile_incomplete"
+
+
 user_skills = Table(
     "user_skills",
     Base.metadata,
     Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
     Column("skill_id", Integer, ForeignKey("skills.id", ondelete="CASCADE"), primary_key=True),
+    Column("proficiency", Integer, default=3),
 )
 
 job_skills = Table(
@@ -56,7 +66,7 @@ class User(Base):
     skills: Mapped[List["Skill"]] = relationship("Skill", secondary=user_skills, back_populates="users")
     
     jobs: Mapped[List["Job"]] = relationship("Job", back_populates="employer", cascade="all, delete-orphan")
-    applications: Mapped[List["Application"]] = relationship("Application", back_populates="applicant", cascade="all, delete-orphan")
+    applications: Mapped[List["Application"]] = relationship("Application", back_populates="applicant", foreign_keys="Application.applicant_id", cascade="all, delete-orphan")
     
     assigned_students: Mapped[List["User"]] = relationship(
         "User",
@@ -84,6 +94,8 @@ class Profile(Base):
     company_description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    resume_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    resume_filename: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -117,6 +129,7 @@ class Job(Base):
     job_type: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     experience_level: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     onet_soc_code: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    deadline: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -134,12 +147,16 @@ class Application(Base):
     applicant_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[ApplicationStatus] = mapped_column(Enum(ApplicationStatus), default=ApplicationStatus.PENDING, nullable=False)
     cover_letter: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    resume_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     match_score: Mapped[Optional[float]] = mapped_column(nullable=True)
+    feedback_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    feedback_by: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("users.id"), nullable=True)
+    feedback_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     job: Mapped["Job"] = relationship("Job", back_populates="applications")
-    applicant: Mapped["User"] = relationship("User", back_populates="applications")
+    applicant: Mapped["User"] = relationship("User", back_populates="applications", foreign_keys=[applicant_id])
 
 
 class Note(Base):
@@ -191,3 +208,52 @@ class ONetOccupation(Base):
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    notification_type: Mapped[NotificationType] = mapped_column(Enum(NotificationType), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    message: Mapped[str] = mapped_column(Text, nullable=False)
+    link: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", backref="notifications")
+
+
+class CareerDetail(Base):
+    __tablename__ = "career_details"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    soc_code: Mapped[str] = mapped_column(String(20), unique=True, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    salary_low: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    salary_median: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    salary_high: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    demand_outlook: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    growth_rate: Mapped[Optional[float]] = mapped_column(nullable=True)
+    responsibilities: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    education_required: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class LearningResource(Base):
+    __tablename__ = "learning_resources"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    skill_id: Mapped[int] = mapped_column(Integer, ForeignKey("skills.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider: Mapped[str] = mapped_column(String(100), nullable=False)
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    resource_type: Mapped[str] = mapped_column(String(50), default="course")
+    estimated_hours: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    difficulty_level: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    is_free: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    skill: Mapped["Skill"] = relationship("Skill", backref="learning_resources")

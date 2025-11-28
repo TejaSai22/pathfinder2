@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { User, Briefcase, GraduationCap, Users, LogOut, Home } from 'lucide-react'
+import { NotificationsDropdown } from '@/components/shared/NotificationsDropdown'
 
 interface LayoutProps {
   children: React.ReactNode
@@ -128,6 +129,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             <div className="flex items-center gap-4">
+              <NotificationsDropdown />
               <div className="flex items-center gap-2 px-3 py-1.5 bg-secondary rounded-full">
                 {getRoleIcon()}
                 <span className="text-sm font-medium">{getRoleLabel()}</span>

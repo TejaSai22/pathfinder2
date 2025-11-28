@@ -5,7 +5,7 @@ Pathfinder v2 is a specialized, real-time IT career matching platform that conne
 
 ## Current State
 - **Status**: Production-ready, single unified service
-- **Last Updated**: November 27, 2025
+- **Last Updated**: November 28, 2025
 - **Architecture**: Monolithic deployment (FastAPI serves both API and built frontend)
 
 ## Architecture
@@ -30,6 +30,14 @@ Pathfinder v2 is a specialized, real-time IT career matching platform that conne
 4. **Real-Time Updates**: TanStack Query for instant cache invalidation
 5. **Skill Gap Analysis**: Radar chart visualization of skill gaps
 
+### New Features (Iteration 1 Enhancements)
+6. **In-App Notifications**: Real-time notification system with unread count, mark as read, and notification types (application status, interview, match, feedback)
+7. **Profile Completion Tracking**: Progress indicator with 80% gate for job recommendations, shows missing fields
+8. **Job Deadlines**: Application deadlines displayed on job cards with color-coded urgency
+9. **Employer Feedback**: Feedback notes visible to students in their applications view
+10. **Career Details**: O*NET career information with salary ranges, growth outlook, and education requirements
+11. **Learning Resources**: Course recommendations linked to specific skills for skill gap remediation
+
 ## Project Structure
 
 ```
@@ -37,24 +45,33 @@ backend/
 ├── app/
 │   ├── main.py              # FastAPI application entry
 │   ├── database.py          # Async SQLAlchemy setup
-│   ├── models.py            # SQLAlchemy models
+│   ├── models.py            # SQLAlchemy models (User, Job, Application, Notification, CareerDetail, LearningResource)
 │   ├── schemas.py           # Pydantic schemas
 │   ├── auth.py              # JWT authentication
+│   ├── seed.py              # Database seed data
 │   ├── services/
-│   │   ├── ml_service.py    # Weighted matching algorithm
-│   │   └── onet_ingest.py   # O*NET data ingestion
-│   └── routers/             # API endpoints
+│   │   ├── ml_service.py         # Weighted matching algorithm
+│   │   ├── onet_ingest.py        # O*NET data ingestion
+│   │   └── notification_service.py  # Notification creation
+│   └── routers/
+│       ├── applications.py  # Application endpoints with feedback
+│       ├── notifications.py # Notification endpoints
+│       ├── careers.py       # Career details and learning resources
+│       └── ...              # Other routers
 
 frontend/
 ├── src/
 │   ├── App.tsx              # Main application
 │   ├── components/
+│   │   ├── Layout.tsx       # Main layout with notifications
 │   │   └── shared/          # Shared UI components
-│   │       ├── EntityCard.tsx
-│   │       └── SkillGapChart.tsx
+│   │       ├── EntityCard.tsx           # Job/applicant cards with deadlines
+│   │       ├── SkillGapChart.tsx        # Radar chart
+│   │       ├── NotificationsDropdown.tsx # Notifications panel
+│   │       └── ProfileCompletionCard.tsx # Profile progress indicator
 │   ├── pages/               # Role-based dashboards
 │   ├── hooks/               # Custom React hooks
-│   └── lib/api.ts           # API client
+│   └── lib/api.ts           # API client with all endpoints
 ```
 
 ## Running the Application

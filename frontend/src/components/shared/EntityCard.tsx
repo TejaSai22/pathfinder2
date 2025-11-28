@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, DollarSign, Briefcase, Clock, Target } from "lucide-react"
+import { MapPin, DollarSign, Briefcase, Clock, Target, Calendar } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface EntityCardProps {
@@ -13,6 +13,7 @@ interface EntityCardProps {
   salary?: { min?: number; max?: number }
   jobType?: string
   experienceLevel?: string
+  deadline?: string
   skills?: { name: string; is_technical: boolean }[]
   status?: string
   applicationCount?: number
@@ -51,6 +52,7 @@ export function EntityCard({
   salary,
   jobType,
   experienceLevel,
+  deadline,
   skills,
   status,
   applicationCount,
@@ -129,6 +131,19 @@ export function EntityCard({
             <div className="flex items-center text-xs text-muted-foreground">
               <Clock className="w-3 h-3 mr-1" />
               {experienceLevel}
+            </div>
+          )}
+          {deadline && (
+            <div className={cn(
+              "flex items-center text-xs",
+              new Date(deadline) < new Date() 
+                ? "text-red-600" 
+                : new Date(deadline) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+                  ? "text-orange-600"
+                  : "text-muted-foreground"
+            )}>
+              <Calendar className="w-3 h-3 mr-1" />
+              Deadline: {new Date(deadline).toLocaleDateString()}
             </div>
           )}
           {applicationCount !== undefined && (

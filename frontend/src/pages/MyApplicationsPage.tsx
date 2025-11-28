@@ -1,7 +1,7 @@
 import { useMyApplications } from '@/hooks/useRealTime'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Briefcase, MapPin, DollarSign } from 'lucide-react'
+import { Loader2, Briefcase, MapPin, DollarSign, MessageSquare, Calendar } from 'lucide-react'
 
 function getStatusVariant(status: string): "default" | "secondary" | "destructive" | "success" | "warning" {
   switch (status) {
@@ -132,6 +132,28 @@ export function MyApplicationsPage() {
                     <div className="mb-4">
                       <p className="text-sm font-medium text-muted-foreground mb-1">Your Cover Letter</p>
                       <p className="text-sm line-clamp-2">{app.cover_letter}</p>
+                    </div>
+                  )}
+
+                  {app.feedback_notes && (
+                    <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageSquare className="w-4 h-4 text-blue-600" />
+                        <p className="text-sm font-medium text-blue-800">Employer Feedback</p>
+                        {app.feedback_at && (
+                          <span className="text-xs text-blue-600">
+                            {new Date(app.feedback_at).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-blue-700">{app.feedback_notes}</p>
+                    </div>
+                  )}
+
+                  {app.job?.deadline && new Date(app.job.deadline) > new Date() && (
+                    <div className="mb-4 flex items-center gap-2 text-sm text-orange-600">
+                      <Calendar className="w-4 h-4" />
+                      <span>Application deadline: {new Date(app.job.deadline).toLocaleDateString()}</span>
                     </div>
                   )}
 

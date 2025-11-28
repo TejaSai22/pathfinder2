@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field
-from app.models import UserRole, ApplicationStatus, InterviewStatus
+from app.models import UserRole, ApplicationStatus, InterviewStatus, NotificationType
 
 
 class SkillBase(BaseModel):
@@ -31,6 +31,8 @@ class ProfileBase(BaseModel):
     company_description: Optional[str] = None
     location: Optional[str] = None
     avatar_url: Optional[str] = None
+    resume_url: Optional[str] = None
+    resume_filename: Optional[str] = None
 
 
 class ProfileCreate(ProfileBase):
@@ -95,6 +97,7 @@ class JobBase(BaseModel):
     job_type: Optional[str] = None
     experience_level: Optional[str] = None
     onet_soc_code: Optional[str] = None
+    deadline: Optional[datetime] = None
 
 
 class JobCreate(JobBase):
@@ -115,6 +118,7 @@ class JobResponse(JobBase):
     created_at: datetime
     updated_at: datetime
     required_skills: List[SkillResponse] = []
+    is_expired: bool = False
 
     class Config:
         from_attributes = True
@@ -130,6 +134,7 @@ class JobWithMatch(JobResponse):
 
 class ApplicationBase(BaseModel):
     cover_letter: Optional[str] = None
+    resume_url: Optional[str] = None
 
 
 class ApplicationCreate(ApplicationBase):
@@ -139,6 +144,7 @@ class ApplicationCreate(ApplicationBase):
 class ApplicationUpdate(BaseModel):
     status: ApplicationStatus
     cover_letter: Optional[str] = None
+    feedback_notes: Optional[str] = None
 
 
 class ApplicationResponse(ApplicationBase):
@@ -147,6 +153,8 @@ class ApplicationResponse(ApplicationBase):
     applicant_id: int
     status: ApplicationStatus
     match_score: Optional[float] = None
+    feedback_notes: Optional[str] = None
+    feedback_at: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
     job: Optional[JobResponse] = None
@@ -249,3 +257,80 @@ class InterviewWithDetails(InterviewResponse):
     applicant_email: str
     job_title: str
     company_name: str
+
+
+class NotificationBase(BaseModel):
+    notification_type: NotificationType
+    title: str
+    message: str
+    link: Optional[str] = None
+
+
+class NotificationCreate(NotificationBase):
+    user_id: int
+
+
+class NotificationResponse(NotificationBase):
+    id: int
+    user_id: int
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class SkillWithProficiency(BaseModel):
+    skill_id: int
+    proficiency: int = Field(ge=1, le=5, default=3)
+
+
+class SkillProficiencyResponse(SkillResponse):
+    proficiency: int = 3
+
+
+class UserSkillsUpdate(BaseModel):
+    skills: List[SkillWithProficiency]
+
+
+class ProfileCompletionResponse(BaseModel):
+    completion_percentage: int
+    missing_fields: List[str]
+    has_skills: bool
+    skill_count: int
+    can_get_recommendations: bool
+
+
+class LearningResourceResponse(BaseModel):
+    id: int
+    skill_id: int
+    title: str
+    provider: str
+    url: str
+    resource_type: str
+    estimated_hours: Optional[int] = None
+    difficulty_level: Optional[str] = None
+    is_free: bool
+
+    class Config:
+        from_attributes = True
+
+
+class CareerDetailResponse(BaseModel):
+    id: int
+    soc_code: str
+    title: str
+    salary_low: Optional[int] = None
+    salary_median: Optional[int] = None
+    salary_high: Optional[int] = None
+    demand_outlook: Optional[str] = None
+    growth_rate: Optional[float] = None
+    responsibilities: Optional[str] = None
+    education_required: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class SkillGapWithResources(SkillGapAnalysis):
+    recommended_courses: List[LearningResourceResponse] = []
