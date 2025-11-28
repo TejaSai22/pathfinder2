@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, EmailStr, Field
-from app.models import UserRole, ApplicationStatus
+from app.models import UserRole, ApplicationStatus, InterviewStatus
 
 
 class SkillBase(BaseModel):
@@ -208,3 +208,44 @@ class ONetOccupationResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class InterviewBase(BaseModel):
+    scheduled_at: datetime
+    duration_minutes: int = 60
+    interview_type: str = "video"
+    location: Optional[str] = None
+    meeting_link: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class InterviewCreate(InterviewBase):
+    application_id: int
+
+
+class InterviewUpdate(BaseModel):
+    scheduled_at: Optional[datetime] = None
+    duration_minutes: Optional[int] = None
+    interview_type: Optional[str] = None
+    location: Optional[str] = None
+    meeting_link: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[InterviewStatus] = None
+
+
+class InterviewResponse(InterviewBase):
+    id: int
+    application_id: int
+    status: InterviewStatus
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class InterviewWithDetails(InterviewResponse):
+    applicant_name: str
+    applicant_email: str
+    job_title: str
+    company_name: str

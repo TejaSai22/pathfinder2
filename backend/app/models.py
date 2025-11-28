@@ -157,6 +157,32 @@ class Note(Base):
     student: Mapped["User"] = relationship("User", back_populates="notes_received", foreign_keys=[student_id])
 
 
+class InterviewStatus(str, enum.Enum):
+    SCHEDULED = "scheduled"
+    CONFIRMED = "confirmed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    RESCHEDULED = "rescheduled"
+
+
+class Interview(Base):
+    __tablename__ = "interviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    application_id: Mapped[int] = mapped_column(Integer, ForeignKey("applications.id", ondelete="CASCADE"), nullable=False)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=60, nullable=False)
+    interview_type: Mapped[str] = mapped_column(String(50), default="video", nullable=False)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    meeting_link: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    status: Mapped[InterviewStatus] = mapped_column(Enum(InterviewStatus), default=InterviewStatus.SCHEDULED, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    application: Mapped["Application"] = relationship("Application", backref="interviews")
+
+
 class ONetOccupation(Base):
     __tablename__ = "onet_occupations"
 

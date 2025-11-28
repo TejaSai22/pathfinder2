@@ -43,15 +43,15 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-primary-foreground font-bold text-xl">P</span>
+          <div className="w-14 h-14 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
+            <GraduationCap className="w-8 h-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl">Pathfinder v2</CardTitle>
           <CardDescription>
-            IT Career Matching Platform
+            UNT College of Information | IT Career Matching
           </CardDescription>
         </CardHeader>
         <CardContent>
