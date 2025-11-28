@@ -7,25 +7,59 @@ import { SkillGapChart } from '@/components/shared/SkillGapChart'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Plus, ArrowLeft, CheckCircle, XCircle, MessageSquare } from 'lucide-react'
+import { Loader2, Plus, ArrowLeft, CheckCircle, XCircle, MessageSquare, Send } from 'lucide-react'
 import { Job, Application } from '@/lib/api'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 
 export function EmployerDashboard() {
   const { user } = useAuth()
   const { data: jobs, isLoading: jobsLoading } = useMyJobs()
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [selectedApplicant, setSelectedApplicant] = useState<Application | null>(null)
+  const [feedbackModal, setFeedbackModal] = useState<{open: boolean; applicationId: number; status: string; applicantName: string} | null>(null)
+  const [feedbackNotes, setFeedbackNotes] = useState('')
   
   const { data: applications, isLoading: applicationsLoading } = useJobApplications(selectedJob?.id || 0)
   const { data: skillGap } = useSkillGap(selectedJob?.id || 0, selectedApplicant?.applicant_id)
   const updateStatus = useUpdateApplicationStatus()
 
-  const handleStatusUpdate = async (applicationId: number, status: string) => {
+  const openFeedbackModal = (applicationId: number, status: string, applicantName: string) => {
+    setFeedbackModal({ open: true, applicationId, status, applicantName })
+    setFeedbackNotes('')
+  }
+
+  const handleStatusUpdate = async () => {
+    if (!feedbackModal) return
     try {
-      await updateStatus.mutateAsync({ applicationId, status })
+      await updateStatus.mutateAsync({ 
+        applicationId: feedbackModal.applicationId, 
+        status: feedbackModal.status,
+        feedbackNotes: feedbackNotes.trim() || undefined
+      })
+      setFeedbackModal(null)
+      setFeedbackNotes('')
     } catch (error) {
       console.error('Failed to update status:', error)
     }
+  }
+
+  const getStatusLabel = (status: string) => {
+    const labels: Record<string, string> = {
+      'interview': 'Schedule Interview',
+      'rejected': 'Reject Application',
+      'accepted': 'Accept Application',
+      'reviewed': 'Mark as Reviewed'
+    }
+    return labels[status] || status
   }
 
   const totalApplications = jobs?.reduce((acc, job) => acc + (job as any).application_count || 0, 0) || 0
@@ -77,7 +111,11 @@ export function EmployerDashboard() {
                           size="sm"
                           variant="outline"
                           className="gap-1"
-                          onClick={() => handleStatusUpdate(app.id, 'interview')}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const name = `${app.applicant?.profile?.first_name || ''} ${app.applicant?.profile?.last_name || 'Applicant'}`.trim()
+                            openFeedbackModal(app.id, 'interview', name)
+                          }}
                           disabled={updateStatus.isPending || app.status === 'interview'}
                         >
                           <CheckCircle className="w-3 h-3" />
@@ -87,7 +125,11 @@ export function EmployerDashboard() {
                           size="sm"
                           variant="destructive"
                           className="gap-1"
-                          onClick={() => handleStatusUpdate(app.id, 'rejected')}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const name = `${app.applicant?.profile?.first_name || ''} ${app.applicant?.profile?.last_name || 'Applicant'}`.trim()
+                            openFeedbackModal(app.id, 'rejected', name)
+                          }}
                           disabled={updateStatus.isPending || app.status === 'rejected'}
                         >
                           <XCircle className="w-3 h-3" />
@@ -203,6 +245,58 @@ export function EmployerDashboard() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!feedbackModal?.open} onOpenChange={(open) => !open && setFeedbackModal(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{feedbackModal ? getStatusLabel(feedbackModal.status) : ''}</DialogTitle>
+            <DialogDescription>
+              {feedbackModal?.status === 'interview' 
+                ? `You're scheduling an interview with ${feedbackModal.applicantName}. Add a note for the applicant.`
+                : feedbackModal?.status === 'rejected'
+                ? `You're rejecting ${feedbackModal?.applicantName}'s application. Optionally add feedback.`
+                : `Update status for ${feedbackModal?.applicantName}.`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="feedback">Feedback Notes (Optional)</Label>
+              <Textarea
+                id="feedback"
+                placeholder={feedbackModal?.status === 'interview' 
+                  ? "e.g., We'd like to discuss your experience with React..."
+                  : "e.g., We're looking for more experience with cloud technologies..."
+                }
+                value={feedbackNotes}
+                onChange={(e) => setFeedbackNotes(e.target.value)}
+                rows={4}
+              />
+              <p className="text-xs text-muted-foreground">
+                This note will be visible to the applicant
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setFeedbackModal(null)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleStatusUpdate}
+              disabled={updateStatus.isPending}
+              variant={feedbackModal?.status === 'rejected' ? 'destructive' : 'default'}
+              className="gap-2"
+            >
+              {updateStatus.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+              {feedbackModal ? getStatusLabel(feedbackModal.status) : 'Update'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

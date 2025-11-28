@@ -101,10 +101,11 @@ export function useCreateApplication() {
 export function useUpdateApplicationStatus() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ applicationId, status }: { applicationId: number; status: string }) =>
-      applicationsApi.updateStatus(applicationId, status),
+    mutationFn: ({ applicationId, status, feedbackNotes }: { applicationId: number; status: string; feedbackNotes?: string }) =>
+      applicationsApi.updateStatusWithFeedback(applicationId, status, feedbackNotes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['applications'] })
+      queryClient.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
 }
@@ -140,6 +141,27 @@ export function useUpdateSkills() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
       queryClient.invalidateQueries({ queryKey: ['users', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    },
+  })
+}
+
+export function useSkillsWithProficiency() {
+  return useQuery({
+    queryKey: ['skills', 'proficiency'],
+    queryFn: usersApi.getSkillsWithProficiency,
+    staleTime: 5000,
+  })
+}
+
+export function useUpdateSkillsWithProficiency() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: usersApi.updateSkillsWithProficiency,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['users', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['skills', 'proficiency'] })
       queryClient.invalidateQueries({ queryKey: ['jobs'] })
     },
   })

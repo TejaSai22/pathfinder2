@@ -184,6 +184,15 @@ export const authApi = {
     fetchApi<User>('/auth/me'),
 }
 
+export interface SkillWithProficiency {
+  skill_id: number;
+  proficiency: number;
+}
+
+export interface SkillProficiencyResponse extends Skill {
+  proficiency: number;
+}
+
 export const usersApi = {
   getProfile: () =>
     fetchApi<User>('/users/me'),
@@ -193,6 +202,15 @@ export const usersApi = {
   
   updateSkills: (skillIds: number[]) =>
     fetchApi<Skill[]>('/users/me/skills', { method: 'PUT', body: JSON.stringify(skillIds) }),
+  
+  updateSkillsWithProficiency: (skills: SkillWithProficiency[]) =>
+    fetchApi<SkillProficiencyResponse[]>('/users/me/skills-with-proficiency', { 
+      method: 'PUT', 
+      body: JSON.stringify({ skills }) 
+    }),
+  
+  getSkillsWithProficiency: () =>
+    fetchApi<SkillProficiencyResponse[]>('/users/me/skills-with-proficiency'),
   
   getProfileCompletion: () =>
     fetchApi<ProfileCompletion>('/users/me/profile-completion'),
@@ -244,6 +262,12 @@ export const applicationsApi = {
     fetchApi<Application>(`/applications/${applicationId}/status`, { 
       method: 'PUT', 
       body: JSON.stringify({ status }) 
+    }),
+  
+  updateStatusWithFeedback: (applicationId: number, status: string, feedbackNotes?: string) =>
+    fetchApi<Application>(`/applications/${applicationId}/status`, { 
+      method: 'PUT', 
+      body: JSON.stringify({ status, feedback_notes: feedbackNotes }) 
     }),
   
   getStudentApplications: (studentId: number) =>

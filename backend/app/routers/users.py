@@ -1,16 +1,18 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 from sqlalchemy.orm import selectinload
 from app.database import get_db
-from app.models import User, Profile, Skill, Application, UserRole, advisor_students
+from app.models import User, Profile, Skill, Application, UserRole, advisor_students, user_skills
 from app.schemas import (
     UserResponse,
     UserWithStats,
     ProfileUpdate,
     ProfileResponse,
     SkillResponse,
+    SkillProficiencyResponse,
+    UserSkillsUpdate,
     ProfileCompletionResponse
 )
 from app.auth import get_current_user, require_advisor
@@ -75,6 +77,77 @@ async def update_my_skills(
     await db.commit()
     
     return skills
+
+
+@router.put("/me/skills-with-proficiency", response_model=List[SkillProficiencyResponse])
+async def update_my_skills_with_proficiency(
+    update_data: UserSkillsUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    await db.execute(
+        delete(user_skills).where(user_skills.c.user_id == current_user.id)
+    )
+    
+    skill_ids = [s.skill_id for s in update_data.skills]
+    result = await db.execute(select(Skill).where(Skill.id.in_(skill_ids)))
+    skills = {s.id: s for s in result.scalars().all()}
+    
+    proficiency_map = {s.skill_id: s.proficiency for s in update_data.skills}
+    
+    for skill_data in update_data.skills:
+        if skill_data.skill_id in skills:
+            await db.execute(
+                user_skills.insert().values(
+                    user_id=current_user.id,
+                    skill_id=skill_data.skill_id,
+                    proficiency=skill_data.proficiency
+                )
+            )
+    
+    await db.commit()
+    
+    result = await db.execute(
+        select(Skill, user_skills.c.proficiency)
+        .join(user_skills, Skill.id == user_skills.c.skill_id)
+        .where(user_skills.c.user_id == current_user.id)
+    )
+    
+    response = []
+    for skill, proficiency in result.all():
+        response.append(SkillProficiencyResponse(
+            id=skill.id,
+            name=skill.name,
+            is_technical=skill.is_technical,
+            category=skill.category,
+            proficiency=proficiency or 3
+        ))
+    
+    return response
+
+
+@router.get("/me/skills-with-proficiency", response_model=List[SkillProficiencyResponse])
+async def get_my_skills_with_proficiency(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Skill, user_skills.c.proficiency)
+        .join(user_skills, Skill.id == user_skills.c.skill_id)
+        .where(user_skills.c.user_id == current_user.id)
+    )
+    
+    response = []
+    for skill, proficiency in result.all():
+        response.append(SkillProficiencyResponse(
+            id=skill.id,
+            name=skill.name,
+            is_technical=skill.is_technical,
+            category=skill.category,
+            proficiency=proficiency or 3
+        ))
+    
+    return response
 
 
 @router.get("/me/profile-completion", response_model=ProfileCompletionResponse)
