@@ -1,5 +1,9 @@
+import os
+import uuid
+from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi.responses import FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from sqlalchemy.orm import selectinload
@@ -18,6 +22,10 @@ from app.schemas import (
 from app.auth import get_current_user, require_advisor
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+UPLOAD_DIR = Path(__file__).parent.parent.parent / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
+ALLOWED_EXTENSIONS = {'.pdf', '.doc', '.docx'}
 
 
 @router.get("/me", response_model=UserResponse)
@@ -55,6 +63,98 @@ async def update_my_profile(
     await db.commit()
     await db.refresh(profile)
     return profile
+
+
+@router.post("/me/resume")
+async def upload_resume(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    ext = Path(file.filename).suffix.lower() if file.filename else ''
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
+    
+    unique_filename = f"{current_user.id}_{uuid.uuid4().hex}{ext}"
+    file_path = UPLOAD_DIR / unique_filename
+    
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+    
+    result = await db.execute(
+        select(Profile).where(Profile.user_id == current_user.id)
+    )
+    profile = result.scalar_one_or_none()
+    
+    if not profile:
+        profile = Profile(user_id=current_user.id)
+        db.add(profile)
+    
+    if profile.resume_url:
+        old_file = UPLOAD_DIR / Path(profile.resume_url).name
+        if old_file.exists():
+            old_file.unlink()
+    
+    profile.resume_url = f"/api/users/resume/{unique_filename}"
+    profile.resume_filename = file.filename
+    
+    await db.commit()
+    
+    return {
+        "message": "Resume uploaded successfully",
+        "filename": file.filename,
+        "url": profile.resume_url
+    }
+
+
+@router.get("/resume/{filename}")
+async def get_resume(
+    filename: str,
+    current_user: User = Depends(get_current_user)
+):
+    file_path = UPLOAD_DIR / filename
+    if not file_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Resume not found"
+        )
+    
+    return FileResponse(
+        file_path,
+        media_type="application/octet-stream",
+        filename=filename
+    )
+
+
+@router.delete("/me/resume")
+async def delete_resume(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(
+        select(Profile).where(Profile.user_id == current_user.id)
+    )
+    profile = result.scalar_one_or_none()
+    
+    if not profile or not profile.resume_url:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No resume found"
+        )
+    
+    file_path = UPLOAD_DIR / Path(profile.resume_url).name
+    if file_path.exists():
+        file_path.unlink()
+    
+    profile.resume_url = None
+    profile.resume_filename = None
+    await db.commit()
+    
+    return {"message": "Resume deleted successfully"}
 
 
 @router.put("/me/skills", response_model=List[SkillResponse])

@@ -288,4 +288,22 @@ async def get_job_skill_gap(
     job_skills = [skill_to_skill_data(s) for s in job.required_skills]
     
     analysis = get_skill_gap_analysis(candidate_skills, job_skills)
+    
+    job_skill_map = {s.name.lower(): s for s in job.required_skills}
+    missing_technical_skills = []
+    missing_soft_skills = []
+    
+    for skill_name in analysis.get("missing_technical", []):
+        skill = job_skill_map.get(skill_name.lower())
+        if skill:
+            missing_technical_skills.append({"id": skill.id, "name": skill.name})
+    
+    for skill_name in analysis.get("missing_soft", []):
+        skill = job_skill_map.get(skill_name.lower())
+        if skill:
+            missing_soft_skills.append({"id": skill.id, "name": skill.name})
+    
+    analysis["missing_technical_skills"] = missing_technical_skills
+    analysis["missing_soft_skills"] = missing_soft_skills
+    
     return SkillGapAnalysis(**analysis)

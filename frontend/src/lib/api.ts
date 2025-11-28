@@ -130,10 +130,16 @@ export interface Note {
 
 export interface SkillGapData {
   skill: string
+  skill_id?: number
   candidate: number
   required: number
   is_technical: boolean
   matched: boolean
+}
+
+export interface SkillRef {
+  id: number
+  name: string
 }
 
 export interface SkillGapAnalysis {
@@ -144,6 +150,8 @@ export interface SkillGapAnalysis {
   matched_soft: string[]
   missing_technical: string[]
   missing_soft: string[]
+  missing_technical_skills?: SkillRef[]
+  missing_soft_skills?: SkillRef[]
   radar_data: SkillGapData[]
 }
 
@@ -223,6 +231,24 @@ export const usersApi = {
   
   assignStudent: (studentId: number) =>
     fetchApi(`/users/students/${studentId}/assign`, { method: 'POST' }),
+  
+  uploadResume: async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await fetch(`${API_BASE}/users/me/resume`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    })
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Upload failed' }))
+      throw new Error(error.detail || 'Upload failed')
+    }
+    return response.json() as Promise<{ message: string; filename: string; url: string }>
+  },
+  
+  deleteResume: () =>
+    fetchApi('/users/me/resume', { method: 'DELETE' }),
 }
 
 export const jobsApi = {

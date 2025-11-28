@@ -34,9 +34,11 @@ Pathfinder v2 is a specialized, real-time IT career matching platform that conne
 6. **In-App Notifications**: Real-time notification system with unread count, mark as read, and notification types (application status, interview, match, feedback)
 7. **Profile Completion Tracking**: Progress indicator with 80% gate for job recommendations, shows missing fields
 8. **Job Deadlines**: Application deadlines displayed on job cards with color-coded urgency
-9. **Employer Feedback**: Feedback notes visible to students in their applications view
+9. **Employer Feedback**: Feedback notes visible to students in their applications view with dialog modal for employers
 10. **Career Details**: O*NET career information with salary ranges, growth outlook, and education requirements
-11. **Learning Resources**: Course recommendations linked to specific skills for skill gap remediation
+11. **Learning Resources**: Course recommendations linked to specific skills for skill gap remediation, shown when selecting jobs with skill gaps
+12. **Skill Proficiency Ratings**: 1-5 star rating system for user skills, affects matching algorithm
+13. **Resume Upload**: Document upload/download functionality with file storage in backend/uploads directory
 
 ## Project Structure
 

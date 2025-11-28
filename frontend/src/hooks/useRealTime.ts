@@ -4,7 +4,8 @@ import {
   applicationsApi, 
   usersApi, 
   skillsApi, 
-  notesApi
+  notesApi,
+  careersApi
 } from '@/lib/api'
 
 export function useJobs() {
@@ -178,6 +179,28 @@ export function useUpdateProfile() {
   })
 }
 
+export function useUploadResume() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: usersApi.uploadResume,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['users', 'me'] })
+    },
+  })
+}
+
+export function useDeleteResume() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: usersApi.deleteResume,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] })
+      queryClient.invalidateQueries({ queryKey: ['users', 'me'] })
+    },
+  })
+}
+
 export function useStudents() {
   return useQuery({
     queryKey: ['students'],
@@ -216,5 +239,13 @@ export function useMyNotes() {
   return useQuery({
     queryKey: ['notes', 'my'],
     queryFn: notesApi.getMyNotes,
+  })
+}
+
+export function useLearningResourcesForMissingSkills(skillIds: number[]) {
+  return useQuery({
+    queryKey: ['learning-resources', 'missing', skillIds],
+    queryFn: () => careersApi.getResourcesForMissingSkills(skillIds),
+    enabled: skillIds.length > 0,
   })
 }

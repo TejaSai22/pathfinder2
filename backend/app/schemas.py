@@ -191,10 +191,16 @@ class NoteResponse(NoteBase):
 
 class SkillGapData(BaseModel):
     skill: str
+    skill_id: Optional[int] = None
     candidate: int
     required: int
     is_technical: bool
     matched: bool
+
+
+class SkillRef(BaseModel):
+    id: int
+    name: str
 
 
 class SkillGapAnalysis(BaseModel):
@@ -205,6 +211,8 @@ class SkillGapAnalysis(BaseModel):
     matched_soft: List[str]
     missing_technical: List[str]
     missing_soft: List[str]
+    missing_technical_skills: Optional[List[SkillRef]] = None
+    missing_soft_skills: Optional[List[SkillRef]] = None
     radar_data: List[SkillGapData]
 
 

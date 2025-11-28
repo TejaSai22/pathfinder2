@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { useSkills, useUpdateProfile, useSkillsWithProficiency, useUpdateSkillsWithProficiency } from '@/hooks/useRealTime'
+import { useSkills, useUpdateProfile, useSkillsWithProficiency, useUpdateSkillsWithProficiency, useUploadResume, useDeleteResume } from '@/hooks/useRealTime'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Save, Check, Star, X } from 'lucide-react'
+import { Loader2, Save, Check, Star, X, Upload, FileText, Trash2 } from 'lucide-react'
 import { SkillWithProficiency } from '@/lib/api'
 
 export function ProfilePage() {
@@ -16,6 +16,9 @@ export function ProfilePage() {
   const { data: userSkillsWithProf } = useSkillsWithProficiency()
   const updateProfile = useUpdateProfile()
   const updateSkillsWithProf = useUpdateSkillsWithProficiency()
+  const uploadResume = useUploadResume()
+  const deleteResume = useDeleteResume()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     first_name: '',
@@ -88,6 +91,33 @@ export function ProfilePage() {
 
   const setProficiency = (skillId: number, level: number) => {
     setSkillProficiencies(prev => ({ ...prev, [skillId]: level }))
+  }
+
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    try {
+      await uploadResume.mutateAsync(file)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (error) {
+      console.error('Failed to upload resume:', error)
+    }
+    
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteResume = async () => {
+    try {
+      await deleteResume.mutateAsync()
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (error) {
+      console.error('Failed to delete resume:', error)
+    }
   }
 
   const selectedSkillIds = Object.keys(skillProficiencies).map(Number)
@@ -204,6 +234,80 @@ export function ProfilePage() {
             )}
             {updateProfile.isPending ? 'Saving...' : saved ? 'Saved!' : 'Save Profile'}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Resume / CV</CardTitle>
+          <CardDescription>
+            Upload your resume for employers to review (PDF, DOC, DOCX)
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={handleResumeUpload}
+            className="hidden"
+          />
+          
+          {user?.profile?.resume_url ? (
+            <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
+              <div className="flex items-center gap-3">
+                <FileText className="w-8 h-8 text-primary" />
+                <div>
+                  <p className="font-medium">{user.profile.resume_filename || 'Resume'}</p>
+                  <p className="text-sm text-muted-foreground">Uploaded and ready for employers</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadResume.isPending}
+                >
+                  {uploadResume.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Upload className="w-4 h-4" />
+                  )}
+                  <span className="ml-2">Replace</span>
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteResume}
+                  disabled={deleteResume.isPending}
+                >
+                  {deleteResume.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div 
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadResume.isPending ? (
+                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
+              ) : (
+                <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
+              )}
+              <p className="font-medium">
+                {uploadResume.isPending ? 'Uploading...' : 'Click to upload your resume'}
+              </p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Supports PDF, DOC, and DOCX files
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

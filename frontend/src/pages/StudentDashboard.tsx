@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { useJobs, useCreateApplication, useSkillGap, useMyApplications } from '@/hooks/useRealTime'
+import { useJobs, useCreateApplication, useSkillGap, useMyApplications, useLearningResourcesForMissingSkills } from '@/hooks/useRealTime'
 import { EntityCard } from '@/components/shared/EntityCard'
 import { SkillGapChart } from '@/components/shared/SkillGapChart'
 import { ProfileCompletionCard } from '@/components/shared/ProfileCompletionCard'
@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Search, Loader2, Filter, X } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Search, Loader2, Filter, X, BookOpen, ExternalLink, GraduationCap, Clock } from 'lucide-react'
 import { JobWithMatch } from '@/lib/api'
 
 export function StudentDashboard() {
@@ -29,6 +30,15 @@ export function StudentDashboard() {
   
   const { data: skillGap } = useSkillGap(selectedJob?.id || 0)
   const createApplication = useCreateApplication()
+
+  const missingSkillIds = useMemo(() => {
+    if (!skillGap) return []
+    const missingTechnical = skillGap.missing_technical_skills || []
+    const missingSoft = skillGap.missing_soft_skills || []
+    return [...missingTechnical, ...missingSoft].map(s => s.id)
+  }, [skillGap])
+
+  const { data: learningResources } = useLearningResourcesForMissingSkills(missingSkillIds)
 
   const appliedJobIds = new Set(applications?.map(a => a.job_id) || [])
 
@@ -289,6 +299,66 @@ export function StudentDashboard() {
                 <p className="mb-2">Select a job to see your skill gap analysis</p>
                 <p className="text-sm">Click on any job card to visualize how your skills compare</p>
               </div>
+            </Card>
+          )}
+
+          {selectedJob && learningResources && learningResources.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5" />
+                  Recommended Learning Resources
+                </CardTitle>
+                <CardDescription>
+                  Courses and certifications to help you close your skill gaps
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {learningResources.slice(0, 5).map(resource => (
+                  <a
+                    key={resource.id}
+                    href={resource.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block p-3 rounded-lg border hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-primary" />
+                          <span className="font-medium">{resource.title}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                          <span>{resource.provider}</span>
+                          {resource.estimated_hours && (
+                            <>
+                              <span>•</span>
+                              <span className="flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {resource.estimated_hours}h
+                              </span>
+                            </>
+                          )}
+                          {resource.difficulty_level && (
+                            <>
+                              <span>•</span>
+                              <Badge variant="outline" className="text-xs">
+                                {resource.difficulty_level}
+                              </Badge>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {resource.is_free && (
+                          <Badge variant="secondary" className="text-xs">Free</Badge>
+                        )}
+                        <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </CardContent>
             </Card>
           )}
         </div>
